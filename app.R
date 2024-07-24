@@ -49,6 +49,15 @@ dayOffMap <- function(offstr){
         return (1)
     }
 }
+dayOffMapR <- function(offint){
+    if (offint == -1){
+        return ('未宣布')
+    }else if(offint == 0 ){
+        return ('上班')
+    }else{
+        return ("放假")
+    }
+}
 
 
 for (city in df_gov$縣市名稱){
@@ -99,10 +108,22 @@ ui <- basicPage(
 server <- function(input, output) {
     
     color_vec <- c('#F0E442','#CC79A7','#999999')
-    
+    df_react <- df
+    makeReactiveBinding("df_react")
+    newData <- reactive({
+        for (i in 1:nrow(df)){
+            df[i,2] <- dayOffMapR(input[[paste0('Today_',i)]])
+            df[i,3] <- dayOffMapR(input[[paste0('Tomorrow_',i)]])
+        }
+        # df[1,2] <- dayOffMapR(input[['Today_1']])
+        # df[1,2] <- dayOffMapR(input$Today_1)
+        # df[2,2] <- dayOffMapR(input$Today_2)
+        df_react <- df
+    })
     output$Map_Today <- renderPlot({
-        work_list <- df$Today
-        p <- ggplot(tw_small, aes(fill = df$Today))
+        df_react <- newData()
+        work_list <- df_react$Today
+        p <- ggplot(tw_small, aes(fill = work_list))
         p <- p + geom_sf(color = 'black') 
         p <- p + guides(fill=guide_legend(title="放假"))
         p <- p + scale_fill_manual(values = color_vec,drop = FALSE)
@@ -110,8 +131,9 @@ server <- function(input, output) {
     })
     
     output$Map_Tomorrow <- renderPlot({
-        work_list <- df$Tomorrow
-        p <- ggplot(tw_small, aes(fill = df$Tomorrow))
+        df_react <- newData()
+        work_list <- df_react$Tomorrow
+        p <- ggplot(tw_small, aes(fill = work_list))
         p <- p + geom_sf(color = 'black') 
         p <- p + guides(fill=guide_legend(title="放假"))
         p <- p + scale_fill_manual(values = color_vec,drop = FALSE)
