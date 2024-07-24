@@ -77,24 +77,26 @@ for (city in df_gov$縣市名稱){
 
 ui <- basicPage(
     titlePanel("放假地圖"),
+    h3('資料來源：https://www.dgpa.gov.tw/typh/daily/nds.html'),
+    h5('僅供程式練習及測試，實際放假請洽行政院人事行政總處。'),
     
     # Application title
     #titlePanel("放假地圖"),
     fluidRow(
-    # fixedRow(
+        # fixedRow(
         column(width = 2,
-           wellPanel(h4('今日'),
-                lapply(1:nrow(df), function(i) {
-                    radioButtons(paste0('Today_', i), paste0('', df[i,1]),choices = dayOffChoice, selected = dayOffMap(df[i,2]) ,inline = TRUE)
-                })
-            )
+               wellPanel(h4('今日'),
+                         lapply(1:nrow(df), function(i) {
+                             radioButtons(paste0('Today_', i), paste0('', df[i,1]),choices = dayOffChoice, selected = dayOffMap(df[i,2]) ,inline = TRUE)
+                         })
+               )
         ),
         column(width = 2,
-           wellPanel(h4('今日'),
-                lapply(1:nrow(df), function(i) {
-                    radioButtons(paste0('Tomorrow_', i), paste0('', df[i,1]),choices = dayOffChoice, selected = dayOffMap(df[i,3]), inline = TRUE)
-                })
-            )
+               wellPanel(h4('今日'),
+                         lapply(1:nrow(df), function(i) {
+                             radioButtons(paste0('Tomorrow_', i), paste0('', df[i,1]),choices = dayOffChoice, selected = dayOffMap(df[i,3]), inline = TRUE)
+                         })
+               )
         ),
         column(4,wellPanel(h2('今日'),
                            plotOutput("Map_Today"),
