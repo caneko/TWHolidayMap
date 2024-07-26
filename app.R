@@ -8,9 +8,6 @@
 #rm(list=ls())
 #cat("\014") 
 library('shiny')
-library('sf')
-library('ggplot2')
-library('rvest')
 
 source('global.r')
 source('ui.r', local = TRUE)
