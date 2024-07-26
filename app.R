@@ -14,9 +14,9 @@ library('rvest')
 CityList <- c("基隆市","臺北市","新北市","桃園市","新竹市","新竹縣","苗栗縣","臺中市","彰化縣","雲林縣","南投縣","嘉義市","嘉義縣","臺南市","高雄市","屏東縣","宜蘭縣","花蓮縣","臺東縣","澎湖縣","連江縣","金門縣")
 
 GetGovData <- function(){
-    #html <- read_html("https://www.dgpa.gov.tw/typh/daily/nds.html")
+    html <- read_html("https://www.dgpa.gov.tw/typh/daily/nds.html")
     #html <- read_html("./testhtml/twoRow.html")
-    html <- read_html("./testhtml/tes2.html")
+    #html <- read_html("./testhtml/tes2.html")
     html %>%
         html_node('table') %>%
         html_table() -> df_gov
@@ -124,6 +124,13 @@ ui <- basicPage(
     titlePanel("放假地圖"),
     h3('資料來源：https://www.dgpa.gov.tw/typh/daily/nds.html'),
     h5('僅供程式練習及測試，實際放假請洽行政院人事行政總處。'),
+    fluidRow(column(width = 3,h6('上傳歷史資訊'),
+                    fileInput("fileInfo", NULL,
+                                        multiple = FALSE,
+                                        accept = c("text/html"))),
+             column(width = 3,h6('讀取最新資訊'),
+                    actionButton("GetGov", "更新")),
+    ),
     
     fluidRow(
         column(width = 3,
