@@ -5,7 +5,8 @@
 #
 #    https://shiny.posit.co/
 #
-
+rm(list=ls())
+cat("\014") 
 library('shiny')
 library('sf')
 library('ggplot2')
@@ -13,14 +14,19 @@ library('rvest')
 
 CityList <- c("基隆市","臺北市","新北市","桃園市","新竹市","新竹縣","苗栗縣","臺中市","彰化縣","雲林縣","南投縣","嘉義市","嘉義縣","臺南市","高雄市","屏東縣","宜蘭縣","花蓮縣","臺東縣","澎湖縣","連江縣","金門縣")
 
-GetGovData <- function(){
-    #html <- read_html("https://www.dgpa.gov.tw/typh/daily/nds.html")
+
+GetGovHtml <- function(url = 'https://www.dgpa.gov.tw/typh/daily/nds.html'){
+    html <- read_html(url)
     #html <- read_html("./testhtml/twoRow.html")
-    html <- read_html("./testhtml/tes2.html")
+    #html <- read_html("./testhtml/tes2.html")
+    return (html)
+}
+
+ParseInfoHtml <- function(html){
     html %>%
         html_node('table') %>%
         html_table() -> df_gov
-
+    
     RowNotCity <- c()
     for (i in 1:nrow(df_gov)){
         if (!(df_gov[i,1] %in% CityList)){
@@ -41,20 +47,6 @@ LoadTWMap <- function(){
     map_shp <- st_crop(map_shp, xmin = min_lon, xmax = max_lon, ymin = min_lat, ymax = max_lat)
     return (map_shp)
 }
-
-TWMap <- LoadTWMap()
-df_gov <- GetGovData()
-TWMap <- TWMap[match(CityList,TWMap$COUNTYNAME),]
-
-StatusVec <- c('放假','部分上班','上班','未公布')
-StatusChoice <-  c(放假 = 1, 部分上班 = 0.5, 上班 = 0,未公布 = -1)
-
-df_status <- data.frame(CityList, 
-                        factor(rep('未公布',22),levels = StatusVec),
-                        factor(rep('未公布',22),levels = StatusVec))
-colnames(df_status) <- c('City',"Today",'Tomorrow')
-
-
 
 StatStr2Num <- function(StatStr){
     if (StatStr == '放假'){
@@ -77,6 +69,14 @@ StatNum2Str <- function(StatNum){
     }else{
         return ("未公布")
     }
+}
+
+DefaultStatus <- function(){
+    df <-  data.frame(CityList, 
+                      factor(rep('未公布',22),levels = StatusVec),
+                      factor(rep('未公布',22),levels = StatusVec))
+    colnames(df) <- c('City',"Today",'Tomorrow')
+    return (df)
 }
 
 
@@ -107,16 +107,27 @@ SolveStatInfo <- function(StatInfo, day = 'Today', ReturnType = 'Num'){
     }else{
         return(StatStr)
     }
-        
+    
 }
 
-
-
-for (city in df_gov$縣市名稱){
-    city_status <- df_gov[df_gov$縣市名稱 == city, 2][[1]] 
-    df_status[df_status$City == city,'Today'] = SolveStatInfo(city_status, 'Today', 'Str')
-    df_status[df_status$City == city,'Tomorrow'] = SolveStatInfo(city_status, 'Tomorrow', 'Str')
+UpdateStatus <- function(df_status, df_gov){
+    for (city in df_gov$縣市名稱){
+        city_status <- df_gov[df_gov$縣市名稱 == city, 2][[1]] 
+        df_status[df_status$City == city,'Today'] = SolveStatInfo(city_status, 'Today', 'Str')
+        df_status[df_status$City == city,'Tomorrow'] = SolveStatInfo(city_status, 'Tomorrow', 'Str')
+    }
+    return(df_status)
 }
+
+StatusVec <- c('放假','部分上班','上班','未公布')
+StatusChoice <-  c(放假 = 1, 部分上班 = 0.5, 上班 = 0,未公布 = -1)
+
+TWMap <- LoadTWMap()
+TWMap <- TWMap[match(CityList,TWMap$COUNTYNAME),]
+
+df_gov <- ParseInfoHtml(GetGovHtml())
+df_status <- DefaultStatus()
+df_status <- UpdateStatus(df_status, df_gov)
 
 
 ui <- basicPage(
@@ -124,18 +135,25 @@ ui <- basicPage(
     titlePanel("放假地圖"),
     h3('資料來源：https://www.dgpa.gov.tw/typh/daily/nds.html'),
     h5('僅供程式練習及測試，實際放假請洽行政院人事行政總處。'),
+    fluidRow(column(width = 3,h6('上傳歷史資訊'),
+                    fileInput("fileInfo", NULL,
+                                        multiple = FALSE,
+                                        accept = c("text/html"))),
+             column(width = 3,h6('讀取最新資訊'),
+                    actionButton("ButtonGetGov", "更新")),
+    ),
     
     fluidRow(
         column(width = 3,
                wellPanel(h4('今日'),
-                         lapply(1:nrow(df), function(i) {
+                         lapply(1:nrow(df_status), function(i) {
                              radioButtons(paste0('Today_', i), paste0('', df_status[i,1]),choices = StatusChoice, selected = StatStr2Num(df_status[i,2]) ,inline = TRUE)
                          })
                )
         ),
         column(width = 3,
                wellPanel(h4('明日'),
-                         lapply(1:nrow(df), function(i) {
+                         lapply(1:nrow(df_status), function(i) {
                              radioButtons(paste0('Tomorrow_', i), paste0('', df_status[i,1]),choices = StatusChoice, selected = StatStr2Num(df_status[i,3]), inline = TRUE)
                          })
                )
@@ -148,9 +166,10 @@ ui <- basicPage(
 )
 
 
-server <- function(input, output) {
+server <- function(input, output, session) {
     
     ColorVec <- c("#009E73",'#F0E442','#CC79A7','#999999')
+    
     df_react <- df_status
     makeReactiveBinding("df_react")
     newData_Today <- reactive({
@@ -188,6 +207,30 @@ server <- function(input, output) {
         p <- p + scale_fill_manual(values = ColorVec,drop = FALSE)
         print(p)
     })
+    
+    observe({
+        req(input$fileInfo)
+        newHtml <- read_html(input$fileInfo[['datapath']])
+        df_gov <- ParseInfoHtml(newHtml)
+        df_status <- DefaultStatus()
+        df_status <- UpdateStatus(df_status, df_gov)
+        for (i in 1:nrow(df_status)){
+            updateRadioButtons(session, paste0('Today_',i), NULL, NULL, StatStr2Num(df_status[i,2]))
+            updateRadioButtons(session, paste0('Tomorrow_',i), NULL, NULL, StatStr2Num(df_status[i,3]))
+        }
+    })
+    observeEvent(
+        input$ButtonGetGov,
+        {
+            govhtml <- GetGovHtml()
+            df_gov <- ParseInfoHtml(govhtml)
+            df_status <- DefaultStatus()
+            df_status <- UpdateStatus(df_status, df_gov)
+            for (i in 1:nrow(df_status)){
+                updateRadioButtons(session, paste0('Today_',i), NULL, NULL, StatStr2Num(df_status[i,2]))
+                updateRadioButtons(session, paste0('Tomorrow_',i), NULL, NULL, StatStr2Num(df_status[i,3]))
+            }
+        })
 }
 
 # Run the application 
