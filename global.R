@@ -1,7 +1,6 @@
 GetGovHtml <- function(url = 'https://www.dgpa.gov.tw/typh/daily/nds.html'){
     html <- read_html(url)
-    #html <- read_html("./testhtml/twoRow.html")
-    #html <- read_html("./testhtml/tes2.html")
+    #html <- read_html("./history/1130724.html")
     return (html)
 }
 
