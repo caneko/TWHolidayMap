@@ -6,7 +6,7 @@ ui <- basicPage(
     uiOutput("link_Gov"),
     uiOutput("link_History"),
     fluidRow(column(width = 3,h2('上傳歷史資訊'),
-                    fileInput("fileInfo", NULL,
+                    fileInput("fileInfo", '請至歷史資訊區下載nds.html並上傳',
                               multiple = FALSE,
                               accept = c("text/html"))),
              column(width = 3,h2('更新最新資訊'),
